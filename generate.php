@@ -1,12 +1,13 @@
 <?php
 require_once 'config.php';
+set_time_limit(0);
 
 $config = new Config();
 $db = new PDO("mysql:host=" . $config->db_host.";dbname=".$config->db_name, $config->db_username, $config->db_password);
 $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 $db->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
 $db->exec('SET names utf8');
-$db->exec('SET storage_engine=innoDB');
+//$db->exec('SET storage_engine=innoDB');
 $db->exec("SET sql_mode = 'STRICT_ALL_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,NO_ENGINE_SUBSTITUTION,PIPES_AS_CONCAT,ONLY_FULL_GROUP_BY'");
 
 //$cn = isset($_REQUEST['cn'])?$_REQUEST['cn'] * 1:10000;
@@ -34,10 +35,14 @@ $db->exec("CREATE TABLE `materials` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `name` (`name`)
 )");
+
+$db->exec("START TRANSACTION");
 $q = $db->prepare("INSERT materials (name, manufact_id) VALUES (CONCAT('Материал товар №', LPAD(:name, 5, '0')), :manufact_id)");
 for ($i = 1; $i <= $material_cn; $i++) {
 	$q->execute(['name' => $i, 'manufact_id' => (($i % 10) + 1)]);
 }
+$db->exec("COMMIT");
+
 
 // Остатки
 $db->exec("DROP TABLE IF EXISTS `cur_stock`");
@@ -73,11 +78,14 @@ $db->exec("CREATE TABLE `client_price` (
   KEY `org_id_manufact` (`org_id_manufact`),
   CONSTRAINT `client_price_ibfk_1` FOREIGN KEY (`mat_id`) REFERENCES `materials` (`id`)
 )");
+$db->exec("START TRANSACTION");
 // Общие прайсы
 $q = $db->prepare("INSERT client_price (org_id, price_type_id) VALUES (:org_id, :price_type_id)");
 for ($i = 1; $i <= $client_cn; $i++) {
 	$q->execute(['org_id' => $i, 'price_type_id' => (($i % 2) + 1)]);
 }
+$db->exec("COMMIT");
+
 // Скидки по производителю
 $db->exec("INSERT INTO client_price (org_id, price_type_id, org_id_manufact)
 SELECT o.org_id
@@ -107,10 +115,12 @@ $db->exec("CREATE TABLE IF NOT EXISTS `exchange_rate` (
   `value` decimal(29,15) NOT NULL,
   PRIMARY KEY (`currency_id`,`date`)
 )");
+$db->exec("START TRANSACTION");
 $q = $db->prepare("INSERT exchange_rate (currency_id, date, value) VALUES (:currency_id, DATE(NOW()) - INTERVAL :i DAY, :value)");
 for ($i = 100; $i >= 0; $i--) {
 	$q->execute(['currency_id' => 2, 'i' => ($i + 1), 'value' => 100 - ($i / 100)]);
 }
+$db->exec("COMMIT");
 
 // Прайсы
 $db->exec("DROP TABLE IF EXISTS prices");
