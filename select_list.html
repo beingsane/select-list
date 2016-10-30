@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title></title>
+<link href="//cdnjs.cloudflare.com/ajax/libs/select2/4.0.3/css/select2.min.css" rel="stylesheet" />
+<script src="//cdnjs.cloudflare.com/ajax/libs/jquery/2.2.4/jquery.min.js"></script>
+</head>
+<body>
+<div>Per page <input type="number" value="500" id="per_page"></div>
+<div>Номер документа <input type="number" value="20515" id="doc_id"></div>
+<div>Список из app <select id="sl_app" style="width: 400px;"></select> <span id="time_sl_app"></span></div>
+<div>Список из DB <select id="sl_db" style="width: 400px;"></select> <span id="time_sl_db"></span></div>
+<script>
+$(function(){
+    $('#sl_db').select2({allowClear: true
+        , placeholder: "Выберите значение"
+        , language: 'ru'
+        , ajax: {url: "get_db_list.php"
+            , dataType: 'json'
+            , delay: 250
+            , data: function (params) {
+                return {
+                    term: params.term
+                    , page: params.page
+                    , doc_id: $('#doc_id').val()
+                    , per_page: $('#per_page').val()
+                };
+            }
+            , processResults: function (data, params) {
+                params.page = params.page || 1;
+                $('#time_sl_db').text(data.time);
+                return {
+                    results: data.items
+                    , pagination: {
+                        more: (params.page * 50) < data.total_count
+                    }
+                };
+            }
+        }
+        , templateResult: function(repo) {
+            if (repo.loading) return repo.text;
+            return repo.name;
+        }
+        , templateSelection: function(repo) {
+            return repo.name || repo.text;
+        }
+        , escapeMarkup: function(markup) {
+            return markup;
+        }
+
+    });
+    $('#sl_app').select2({allowClear: true
+        , placeholder: "Выберите значение"
+        , language: 'ru'
+        , ajax: {url: "get_app_list.php"
+            , dataType: 'json'
+            , delay: 250
+            , data: function (params) {
+                return {
+                    term: params.term
+                    , page: params.page
+                    , doc_id: $('#doc_id').val()
+                    , per_page: $('#per_page').val()
+                };
+            }
+            , processResults: function (data, params) {
+                params.page = params.page || 1;
+                $('#time_sl_app').text(data.time);
+                return {
+                    results: data.items
+                    , pagination: {
+                        more: (params.page * 50) < data.total_count
+                    }
+                };
+            }
+        }
+        , templateResult: function(repo) {
+            if (repo.loading) return repo.text;
+            return repo.name;
+        }
+        , templateSelection: function(repo) {
+            return repo.name || repo.text;
+        }
+        , escapeMarkup: function(markup) {
+            return markup;
+        }
+    });
+})
+</script>
+</body>
+<script src="//cdnjs.cloudflare.com/ajax/libs/select2/4.0.3/js/select2.full.js"></script>
+<script src="//cdnjs.cloudflare.com/ajax/libs/select2/4.0.3/js/i18n/ru.js"></script>
+</html>
