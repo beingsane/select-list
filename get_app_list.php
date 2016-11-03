@@ -1,6 +1,9 @@
 <?php
 require_once 'config.php';
 
+$memcache = new Memcache;
+$memcache->connect('127.0.0.1', 11211);
+
 $config = new Config();
 $db = new PDO("mysql:host=" . $config->db_host.";dbname=".$config->db_name, $config->db_username, $config->db_password);
 $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
@@ -35,8 +38,15 @@ $q = $db->prepare($sql);
 $q->execute(['org_id' => $doc['org_id_addr'], 'term' => $term]);
 $materials = $q->fetchAll();
 
-function get_client_price($mat, $doc)
+function get_client_price($mat, $doc, $memcache)
 {
+    $key = 'client_price:' . $mat['id'] . $doc['id'];
+    $price = $memcache->get($key);
+    if ($price !== false) {
+        return $price;
+    }
+
+
 	global $db;
 
 	// Определяем скидку по клиенту
@@ -132,12 +142,14 @@ function get_client_price($mat, $doc)
 		$price = $price * $value;
 	}
 
+    $memcache->set($key, $price, false, 10);
+
 	return $price;
 }
 
 $data = [];
 foreach ($materials as $material) {
-	$price = get_client_price($material, $doc);
+	$price = get_client_price($material, $doc, $memcache);
 	$data[] = ['name' => $material['name'].' - '.$price.' - '.$material['kol']];
 }
 $return = [];
