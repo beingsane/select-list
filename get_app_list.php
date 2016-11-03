@@ -24,7 +24,7 @@ $doc = $q->fetch();
 
 // Материалы
 $sql = "
-    SELECT SQL_NO_CACHE m.id, m.name, cs.kol
+    SELECT SQL_NO_CACHE m.id, m.name, m.manufact_id, cs.kol
     FROM materials m
         LEFT JOIN cur_stock cs ON cs.org_id = :org_id AND m.id = cs.mat_id
     WHERE m.name LIKE CONCAT('%', :term, '%')
@@ -49,28 +49,29 @@ function get_client_price($mat, $doc)
             AND cp.mat_id = :mat_id
             AND cp.org_id_manufact IS NULL
             AND NOW() = NOW()
+        LIMIT 1
     ";
 	$q = $db->prepare($sql);
 	$q->execute(['org_id' => $doc['org_id_client'], 'mat_id' => $mat['id']]);
 	$r = $q->fetch();
 
 	if ($r === false) {
-		// Скидка по производителю
+        // Скидка по производителю
 		$sql = "
             SELECT SQL_NO_CACHE cp.price_type_id, cp.discount
             FROM client_price cp
-                INNER JOIN materials m ON cp.org_id_manufact = m.manufact_id
             WHERE cp.org_id = :org_id
-                AND m.id = :mat_id
+                AND cp.org_id_manufact = :manufact_id
                 AND cp.mat_id IS NULL
                 AND NOW() = NOW()
+            LIMIT 1
         ";
 		$q = $db->prepare($sql);
-		$q->execute(['org_id' => $doc['org_id_client'], 'mat_id' => $mat['id']]);
+		$q->execute(['org_id' => $doc['org_id_client'], 'manufact_id' => $mat['manufact_id']]);
 		$r = $q->fetch();
 
 		if ($r === false) {
-			// Общая скидка
+            // Общая скидка
 			$sql = "
                 SELECT SQL_NO_CACHE cp.price_type_id, cp.discount
                 FROM client_price cp
@@ -78,6 +79,7 @@ function get_client_price($mat, $doc)
                     AND cp.mat_id IS NULL
                     AND cp.org_id_manufact IS NULL
                     AND NOW() = NOW()
+                LIMIT 1
             ";
 			$q = $db->prepare($sql);
 			$q->execute(['org_id' => $doc['org_id_client']]);
@@ -121,7 +123,7 @@ function get_client_price($mat, $doc)
                 AND r.date <= :date
                 AND NOW() = NOW()
             ORDER BY r.date DESC
-            LIMIT 100
+            LIMIT 1
         ";
 		$q = $db->prepare($sql);
 		$q->execute(['currency_id' => $r['currency_id'], 'date' => $doc['date']]);
